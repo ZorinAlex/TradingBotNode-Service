@@ -6,16 +6,13 @@ import {WebSocket} from 'ws';
 import {Cron} from "@nestjs/schedule";
 
 import InterfaceTickerData from "../misc/interfaces/interface-ticker-data";
-import InterfaceDataPriceData from '../misc/interfaces/interface-data-price-data';
 import {WSChannels, WSEvents} from "../misc/names/ws-names";
 import {ReadyState} from "../misc/enums/ws-ready-state";
 import convertInputData from "../utils/dataConvert";
-import {PredictionService} from "../prediction/prediction.service";
-import InterfacePredictionResult from "../misc/interfaces/interface-prediction-result";
 
 @Injectable()
 export class DataService {
-    constructor( protected predictionService: PredictionService){
+    constructor(){
         this.logger = new Logger(this.name);
         //this.connect();
     }
@@ -28,24 +25,19 @@ export class DataService {
     protected heartbitTimeout: Timeout;
     protected isPinged: boolean = false;
 
-    async getData(hours: number): Promise<Array<InterfaceDataPriceData>>{
-        const end = Date.now();
-        const start = end - (hours + 1)*60*60*1000;
+    async getHoursDataInRange(start: number, end: number){
         try{
             const pricesData = await axios.get(`https://api.blockchain.com/nabu-gateway/markets/exchange/prices?symbol=BTC-USD&start=${start}&end=${end}&granularity=3600`);
-            //remove current hour cause its not filled
-            pricesData.data.prices.pop();
             return convertInputData(pricesData.data.prices);
         }catch (error) {
             return error.data
         }
     }
 
-    async getPrediction(): Promise<InterfacePredictionResult>{
+    async getDataInRange(start: number, end: number, granularity: number){
         try{
-            const inputData: Array<InterfaceDataPriceData> = await this.getData(81);
-            const prediction: InterfacePredictionResult = await this.predictionService.predictAction(inputData);
-            return prediction;
+            const pricesData = await axios.get(`https://api.blockchain.com/nabu-gateway/markets/exchange/prices?symbol=BTC-USD&start=${start}&end=${end}&granularity=${granularity}`);
+            return convertInputData(pricesData.data.prices);
         }catch (error) {
             return error.data
         }
@@ -55,14 +47,14 @@ export class DataService {
         return this.isPinged;
     }
 
-    @Cron('1 * * * *')
-    async handleCron() {
-        this.logger.log('CORN HOUR ENDED:');
-        const lastData = await this.getData(2);
-        const prediction = await this.getPrediction();
-        this.logger.log(prediction);
-        this.logger.log(lastData[0]);
-    }
+    // @Cron('1 * * * *')
+    // async handleCron() {
+    //     this.logger.log('CORN HOUR ENDED:');
+    //     const lastData = await this.getData(2);
+    //     //const prediction = await this.getPrediction();
+    //     this.logger.log(prediction);
+    //     this.logger.log(lastData[0]);
+    // }
 
     connect(): void{
         const endpoint: string = 'wss://ws.prod.blockchain.info/mercury-gateway/v1/ws';

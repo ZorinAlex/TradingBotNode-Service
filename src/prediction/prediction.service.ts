@@ -8,6 +8,7 @@ import predictionAction from "../utils/predictionAction";
 import {InjectModel} from "@nestjs/mongoose";
 import {Model} from "mongoose";
 import {PredictionDto} from "../dto/prediction-dto";
+import ModelPredictionDto from "../dto/model-prediction-dto";
 
 @Injectable()
 export class PredictionService {
@@ -19,17 +20,18 @@ export class PredictionService {
     protected name: string = 'Prediction Service';
     protected logger: Logger;
 
-    async predictAction(data: Array<InterfaceDataPriceData>) :Promise<InterfacePredictionResult>{
-        const modelName='saved_model';
-        const modelExamples = 81;
+    async predictAction(data: ModelPredictionDto) :Promise<InterfacePredictionResult>{
+        const modelName=data.model;
+        const version=data.version;
         const headers = {
             'Content-Type': 'application/json'
         };
-        let dataProcessed: Array<number> = await dataPreprocess(modelName,data, ['open', 'high', 'low', 'close']);
+        const inputData: Array<InterfaceDataPriceData> = data.data;
+        let dataProcessed: Array<number> = await dataPreprocess(modelName,inputData, ['close', 'volume', 'change','volatility']);
         const dataForTF: string = JSON.stringify({instances:[[dataProcessed]]});
         try {
-            const timestamp: number = data[data.length - 1].timestamp;
-            const predictionResult = await axios.post(`${process.env.TF_ADRESS}:${process.env.TF_PORT}/v1/models/${modelName}:predict`, dataForTF, {headers:headers});
+            const timestamp: number = inputData[inputData.length - 1].timestamp;
+            const predictionResult = await axios.post(`${process.env.TF_ADRESS}:${process.env.TF_PORT}/v1/models/${modelName}/versions/${version}:predict`, dataForTF, {headers:headers});
             const predictionsArr: Array<number> = predictionResult.data.predictions[0];
             const predictionIndex: number = argmax(predictionsArr);
             const predictionPercentage: number = Math.floor(predictionsArr[predictionIndex]*100);
@@ -43,7 +45,7 @@ export class PredictionService {
             await newPrediction.save();
             return prediction
         }catch (error) {
-            this.logger.error(error.response.data.error)
+            this.logger.error(error.response)
         }
     }
 }

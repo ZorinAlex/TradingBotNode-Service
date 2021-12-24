@@ -5,14 +5,20 @@ import {DataService} from "./data.service";
 export class DataController {
     constructor(private dataService: DataService){}
 
-    @Get('pred')
-    async getPrediction(){
-        return await this.dataService.getPrediction();
+    @Get('hour/:start/:end')
+    async getHourDataInRange(@Param('start') start: number, @Param('end') end: number){
+        return  await this.dataService.getHoursDataInRange(start, end);
     }
 
-    @Get('/:hours')
-    async getData(@Param('hours') hours: number){
-        let dat = await this.dataService.getData(Number(hours))
-        return dat
+    @Get('/:start/:end/:granularity')
+    /**
+     * granularity:
+     * 1H  - 3600
+     * 15M - 900
+     * 5M  - 300
+     * 1M  - 60
+     */
+    async getDataInRange(@Param('start') start: number, @Param('end') end: number, @Param('granularity') granularity: number){
+        return  await this.dataService.getDataInRange(start, end, granularity);
     }
 }

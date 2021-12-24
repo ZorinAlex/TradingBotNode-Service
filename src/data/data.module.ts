@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DataService } from './data.service';
 import { DataController } from './data.controller';
-import {PredictionModule} from "../prediction/prediction.module";
 
 @Module({
-  imports: [PredictionModule],
+  imports: [],
   providers: [DataService],
   controllers: [DataController]
 })
