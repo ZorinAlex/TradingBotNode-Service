@@ -9,7 +9,9 @@ import { PredictionModule } from './prediction/prediction.module';
 import {ServeStaticModule} from "@nestjs/serve-static";
 import { TradeModule } from './trade/trade.module';
 import {MongooseModule} from "@nestjs/mongoose";
-import { TestModule } from './test/test.module';
+import { StrategyModule } from './strategy/strategy.module';
+import { ExchangeModule } from './exchange/exchange.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -30,7 +32,9 @@ import { TestModule } from './test/test.module';
     ScheduleModule.forRoot(),
     PredictionModule,
     TradeModule,
-    TestModule
+    StrategyModule,
+    ExchangeModule,
+    WalletModule
   ],
   controllers: [AppController],
   providers: [AppService],

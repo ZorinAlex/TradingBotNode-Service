@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TradeService } from './trade.service';
+import {MongooseModule} from "@nestjs/mongoose";
+import {Trade, TradeSchema} from "../schemas/trade.schema";
 
 @Module({
-  providers: [TradeService]
+  imports: [MongooseModule.forFeature([{name: Trade.name, schema: TradeSchema}]), TradeModule],
+  providers: [TradeService],
+  exports: [TradeService]
 })
 export class TradeModule {}

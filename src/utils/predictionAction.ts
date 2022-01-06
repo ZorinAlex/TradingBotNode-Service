@@ -1,13 +1,13 @@
 import {TfAction} from "../misc/enums/tf-action";
-import PredictionActions from "../misc/names/prediction-actions";
+import {TfActionString} from "../misc/enums/tf-action-string";
 
-export default function predictionAction(number: number) {
+export default function predictionAction(number: number): TfActionString {
     switch (number) {
         case TfAction.NOTHING:
-            return PredictionActions.NONE;
+            return TfActionString.NONE;
         case TfAction.BUY:
-            return PredictionActions.BUY;
+            return TfActionString.BUY;
         case TfAction.SELL:
-            return PredictionActions.SELL
+            return TfActionString.SELL
     }
 }
