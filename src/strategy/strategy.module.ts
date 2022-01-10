@@ -9,6 +9,7 @@ import {TradeModule} from "../trade/trade.module";
 @Module({
   imports: [MongooseModule.forFeature([{name: Strategy.name, schema: StrategySchema}]), WalletModule, TradeModule],
   providers: [StrategyService],
-  controllers: [StrategyController]
+  controllers: [StrategyController],
+  exports: [StrategyService]
 })
 export class StrategyModule {}

@@ -6,5 +6,5 @@ export class CreateTradeDto{
     strategy: mongoose.Schema.Types.ObjectId;
     price: number;
     from: EStrategyStates;
-    action: TfActionString
+    action: TfActionString;
 }

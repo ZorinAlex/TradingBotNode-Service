@@ -4,6 +4,8 @@ import {Schema} from "mongoose";
 export class CreateStrategyDto{
     readonly exchange: Schema.Types.ObjectId;
     readonly wallet: Schema.Types.ObjectId;
+    readonly model: string;
+    readonly version: string;
     readonly currentState: EStrategyStates;
     readonly lastSell: number;
     readonly sequential: boolean;

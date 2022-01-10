@@ -12,6 +12,7 @@ import {MongooseModule} from "@nestjs/mongoose";
 import { StrategyModule } from './strategy/strategy.module';
 import { ExchangeModule } from './exchange/exchange.module';
 import { WalletModule } from './wallet/wallet.module';
+import { BlockchainModule } from './blockchain/blockchain.module';
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { WalletModule } from './wallet/wallet.module';
     TradeModule,
     StrategyModule,
     ExchangeModule,
-    WalletModule
+    WalletModule,
+    BlockchainModule
   ],
   controllers: [AppController],
   providers: [AppService],

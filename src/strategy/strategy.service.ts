@@ -51,10 +51,22 @@ export class StrategyService {
     }
 
     protected processNeuralInput(strategy: StrategyDocument,predictionData: InterfacePredictionResult, price: number){
-        switch (predictionData.predictionAction){
-            case TfActionString.BUY:
-                if(strategy.sequential){
-                    if(strategy.currentState === EStrategyStates.NONE){
+        if (strategy.model === predictionData.model && strategy.version === predictionData.version){
+            switch (predictionData.predictionAction){
+                case TfActionString.BUY:
+                    if(strategy.sequential){
+                        if(strategy.currentState === EStrategyStates.NONE){
+                            if(predictionData.predictionPercentage>=strategy.buyConfidence){
+                                if(strategy.trailingBuy){
+                                    strategy.currentState = EStrategyStates.TRAILING_BUY;
+                                    strategy.trailingBuyLastPrice = price;
+                                    this.updateStrategy(strategy);
+                                }else{
+                                    this.buy(price, strategy);
+                                }
+                            }
+                        }
+                    }else{
                         if(predictionData.predictionPercentage>=strategy.buyConfidence){
                             if(strategy.trailingBuy){
                                 strategy.currentState = EStrategyStates.TRAILING_BUY;
@@ -65,21 +77,21 @@ export class StrategyService {
                             }
                         }
                     }
-                }else{
-                    if(predictionData.predictionPercentage>=strategy.buyConfidence){
-                        if(strategy.trailingBuy){
-                            strategy.currentState = EStrategyStates.TRAILING_BUY;
-                            strategy.trailingBuyLastPrice = price;
-                            this.updateStrategy(strategy);
-                        }else{
-                            this.buy(price, strategy);
+                    break;
+                case TfActionString.SELL:
+                    if(strategy.sequential){
+                        if(strategy.currentState === EStrategyStates.BOUGHT){
+                            if(predictionData.predictionPercentage>=strategy.sellConfidence){
+                                if(strategy.trailingSell){
+                                    strategy.currentState = EStrategyStates.TRAILING_SELL;
+                                    strategy.trailingSellLastPrice = price;
+                                    this.updateStrategy(strategy);
+                                }else{
+                                    this.sell(price, strategy);
+                                }
+                            }
                         }
-                    }
-                }
-                break;
-            case TfActionString.SELL:
-                if(strategy.sequential){
-                    if(strategy.currentState === EStrategyStates.BOUGHT){
+                    }else{
                         if(predictionData.predictionPercentage>=strategy.sellConfidence){
                             if(strategy.trailingSell){
                                 strategy.currentState = EStrategyStates.TRAILING_SELL;
@@ -90,20 +102,10 @@ export class StrategyService {
                             }
                         }
                     }
-                }else{
-                    if(predictionData.predictionPercentage>=strategy.sellConfidence){
-                        if(strategy.trailingSell){
-                            strategy.currentState = EStrategyStates.TRAILING_SELL;
-                            strategy.trailingSellLastPrice = price;
-                            this.updateStrategy(strategy);
-                        }else{
-                            this.sell(price, strategy);
-                        }
-                    }
-                }
-                break;
-            case TfActionString.NONE:
-                break;
+                    break;
+                case TfActionString.NONE:
+                    break;
+            }
         }
     }
 

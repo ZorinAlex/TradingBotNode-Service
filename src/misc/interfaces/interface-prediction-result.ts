@@ -5,4 +5,6 @@ export default interface InterfacePredictionResult {
     predictionsArr: Array<number>,
     predictionPercentage: number
     predictionAction: TfActionString
+    model: string,
+    version: string
 }

@@ -39,7 +39,9 @@ export class PredictionService {
                 timestamp,
                 predictionsArr,
                 predictionPercentage,
-                predictionAction: predictionAction(predictionIndex)
+                predictionAction: predictionAction(predictionIndex),
+                model: modelName,
+                version
             };
             const newPrediction = new this.predictionModel(prediction);
             await newPrediction.save();

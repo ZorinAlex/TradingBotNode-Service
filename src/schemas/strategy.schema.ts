@@ -11,6 +11,10 @@ export class Strategy {
     exchange: Exchange;
     @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Wallet'})
     wallet: Wallet;
+    @Prop({required: true})
+    model: string;
+    @Prop({required: true})
+    version: string;
     @Prop({required: false, default: EStrategyStates.NONE})
     currentState: EStrategyStates;
     @Prop({required: false, default: 0})
