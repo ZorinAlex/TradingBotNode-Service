@@ -6,10 +6,10 @@ import {CreateWalletDto} from "../dto/create-wallet-dto";
 export class WalletController {
     constructor(private walletService: WalletService){}
 
-    @Post('add')
-    async add(@Body() createWalletDto: CreateWalletDto){
-        return await this.walletService.add(createWalletDto)
-    }
+    // @Post('add')
+    // async add(@Body() createWalletDto: CreateWalletDto){
+    //     return await this.walletService.add(createWalletDto)
+    // }
 
     @Get('list')
     async getList(){

@@ -10,6 +10,10 @@ export class TradeService {
         @InjectModel(Trade.name) private tradeModel: Model<TradeDocument>
     ){}
 
+    public getList(): Promise<Trade[]>{
+        return this.tradeModel.find().exec()
+    }
+
     public addTradeAction(createTradeDto: CreateTradeDto){
         const trade = new this.tradeModel(createTradeDto).save()
     }

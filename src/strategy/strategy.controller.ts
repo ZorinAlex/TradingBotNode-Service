@@ -6,8 +6,8 @@ import {CreateStrategyDto} from "../dto/create-strategy-dto";
 export class StrategyController {
     constructor(private strategyService: StrategyService){}
 
-    @Post('add')
-    add(@Body() createStrategyDto: CreateStrategyDto){
-        return this.strategyService.add(createStrategyDto);
-    }
+    // @Post('add')
+    // add(@Body() createStrategyDto: CreateStrategyDto){
+    //     return this.strategyService.add(createStrategyDto);
+    // }
 }

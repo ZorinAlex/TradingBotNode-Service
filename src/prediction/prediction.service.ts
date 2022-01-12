@@ -27,9 +27,10 @@ export class PredictionService {
             'Content-Type': 'application/json'
         };
         const inputData: Array<InterfaceDataPriceData> = data.data;
-        let dataProcessed: Array<number> = await dataPreprocess(modelName,inputData, ['close', 'volume', 'change','volatility']);
-        const dataForTF: string = JSON.stringify({instances:[[dataProcessed]]});
         try {
+            let dataProcessed: Array<number> = await dataPreprocess(modelName,inputData, ['close', 'volume', 'change','volatility']);
+            const dataForTF: string = JSON.stringify({instances:[[dataProcessed]]});
+
             const timestamp: number = inputData[inputData.length - 1].timestamp;
             const predictionResult = await axios.post(`${process.env.TF_ADRESS}:${process.env.TF_PORT}/v1/models/${modelName}/versions/${version}:predict`, dataForTF, {headers:headers});
             const predictionsArr: Array<number> = predictionResult.data.predictions[0];
@@ -47,7 +48,7 @@ export class PredictionService {
             await newPrediction.save();
             return prediction
         }catch (error) {
-            this.logger.error(error.response)
+            this.logger.error(error)
         }
     }
 }

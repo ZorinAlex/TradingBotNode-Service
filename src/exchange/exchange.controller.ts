@@ -6,10 +6,10 @@ import {CreateExchangeDto} from "../dto/create-exchange-dto";
 export class ExchangeController {
     constructor(private exchangeService: ExchangeService){}
 
-    @Post('add')
-    async add(@Body() createExchangeDto: CreateExchangeDto){
-        return await this.exchangeService.add(createExchangeDto)
-    }
+    // @Post('add')
+    // async add(@Body() createExchangeDto: CreateExchangeDto){
+    //     return await this.exchangeService.add(createExchangeDto)
+    // }
 
     @Get('list')
     async getList(){
