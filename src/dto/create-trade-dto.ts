@@ -7,4 +7,5 @@ export class CreateTradeDto{
     price: number;
     from: EStrategyStates;
     action: TfActionString;
+    value: number
 }

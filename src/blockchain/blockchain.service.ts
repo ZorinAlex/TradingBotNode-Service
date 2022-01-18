@@ -20,7 +20,7 @@ export class BlockchainService {
         private strategyService: StrategyService
     ){
         this.logger = new Logger(this.name);
-        this.connect();
+        // this.connect();
     }
 
     protected name: string = 'Blockchain Service';
@@ -35,25 +35,25 @@ export class BlockchainService {
         return this.isPinged;
     }
 
-    @Cron('1 * * * *')
-    async handleCron() {
-        this.logger.log('CORN HOUR ENDED:');
-        try{
-            let lastData: Array<InterfaceDataPriceData> = await this.dataService.getHoursDataBlockchain(62);
-            if(lastData.length>61){
-                lastData = lastData.slice(-61)
-            }
-            let timestamp = lastData[lastData.length-1].timestamp;
-            let price = lastData[lastData.length-1].close;
-            this.logger.log('LAST DATE TIME:', new Date(timestamp).toLocaleString());
-            //TODO get predictions for all models
-            const prediction: InterfacePredictionResult = await this.predictionService.predictAction({data: lastData, model:'BTCUSD_blockchain_hours_60', version:'1'});
-            this.strategyService.processInputSignal(price, false, prediction);
-            this.logger.log(prediction);
-        }catch (e) {
-            console.log(e);
-        }
-    }
+    // @Cron('1 * * * *')
+    // async handleCron() {
+    //     this.logger.log('CORN HOUR ENDED:');
+    //     try{
+    //         let lastData: Array<InterfaceDataPriceData> = await this.dataService.getHoursDataBlockchain(62);
+    //         if(lastData.length>61){
+    //             lastData = lastData.slice(-61)
+    //         }
+    //         let timestamp = lastData[lastData.length-1].timestamp;
+    //         let price = lastData[lastData.length-1].close;
+    //         this.logger.log('LAST DATE TIME:', new Date(timestamp).toLocaleString());
+    //         //TODO get predictions for all models
+    //         const prediction: InterfacePredictionResult = await this.predictionService.predictAction({data: lastData, model:'BTCUSD_blockchain_hours_60', version:'1'});
+    //         this.strategyService.processInputSignal(price, false, prediction);
+    //         this.logger.log(prediction);
+    //     }catch (e) {
+    //         console.log(e);
+    //     }
+    // }
 
     connect(): void{
         const endpoint: string = 'wss://ws.blockchain.info/mercury-gateway/v1/ws';

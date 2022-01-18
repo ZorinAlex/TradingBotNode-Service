@@ -15,6 +15,8 @@ export class Trade {
     from: EStrategyStates;
     @Prop({required: true})
     action: TfActionString;
+    @Prop({required: true})
+    value: TfActionString;
 }
 
 export const TradeSchema = SchemaFactory.createForClass(Trade);

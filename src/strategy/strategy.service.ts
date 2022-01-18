@@ -1,4 +1,4 @@
-import {Injectable} from '@nestjs/common';
+import {Injectable, Logger} from '@nestjs/common';
 import {InjectModel} from "@nestjs/mongoose";
 import {Strategy, StrategyDocument} from "../schemas/strategy.schema";
 import {Model} from 'mongoose';
@@ -12,6 +12,8 @@ import {UpdateStrategyDto} from "../dto/update-strategy-dto";
 import * as mongoose from "mongoose";
 import * as _ from 'lodash';
 import {TradeService} from "../trade/trade.service";
+import removeFields from "../utils/mongoObjectClean";
+import {UpdateWalletDto} from "../dto/update-wallet-dto";
 
 @Injectable()
 export class StrategyService {
@@ -20,9 +22,11 @@ export class StrategyService {
         private walletService: WalletService,
         private tradeService: TradeService
     ){
+        this.logger = new Logger(this.name);
         this.preloadStrategies();
     }
-
+    protected name: string = 'Strategy Service';
+    protected logger: Logger;
     protected strategies: Array<StrategyDocument>;
 
     public async add(createStrategyDto: CreateStrategyDto): Promise<StrategyDocument>{
@@ -33,6 +37,7 @@ export class StrategyService {
     }
 
     public async update(id: mongoose.Schema.Types.ObjectId, updateStrategyDto: UpdateStrategyDto): Promise<StrategyDocument>{
+        removeFields(updateStrategyDto, ['_id', 'model', 'version', 'wallet', 'exchange', 'createdAt', 'updatedAt']);
         return await this.strategyModel.findByIdAndUpdate(id, updateStrategyDto).exec();
     }
 
@@ -47,6 +52,7 @@ export class StrategyService {
     }
 
     protected async preloadStrategies(){
+        //TODO use Redis for strategies
         this.strategies = await this.strategyModel.find().populate('wallet exchange').exec();
     }
 
@@ -59,7 +65,7 @@ export class StrategyService {
                             if(predictionData.predictionPercentage>=strategy.buyConfidence){
                                 if(strategy.trailingBuy){
                                     strategy.currentState = EStrategyStates.TRAILING_BUY;
-                                    strategy.trailingBuyLastPrice = price;
+                                    strategy.trailingBuyLastPrice = 0;
                                     this.updateStrategy(strategy);
                                 }else{
                                     this.buy(price, strategy);
@@ -70,7 +76,7 @@ export class StrategyService {
                         if(predictionData.predictionPercentage>=strategy.buyConfidence){
                             if(strategy.trailingBuy){
                                 strategy.currentState = EStrategyStates.TRAILING_BUY;
-                                strategy.trailingBuyLastPrice = price;
+                                strategy.trailingBuyLastPrice = 0;
                                 this.updateStrategy(strategy);
                             }else{
                                 this.buy(price, strategy);
@@ -84,7 +90,7 @@ export class StrategyService {
                             if(predictionData.predictionPercentage>=strategy.sellConfidence){
                                 if(strategy.trailingSell){
                                     strategy.currentState = EStrategyStates.TRAILING_SELL;
-                                    strategy.trailingSellLastPrice = price;
+                                    strategy.trailingSellLastPrice = 0;
                                     this.updateStrategy(strategy);
                                 }else{
                                     this.sell(price, strategy);
@@ -95,7 +101,7 @@ export class StrategyService {
                         if(predictionData.predictionPercentage>=strategy.sellConfidence){
                             if(strategy.trailingSell){
                                 strategy.currentState = EStrategyStates.TRAILING_SELL;
-                                strategy.trailingSellLastPrice = price;
+                                strategy.trailingSellLastPrice = 0;
                                 this.updateStrategy(strategy);
                             }else{
                                 this.sell(price, strategy);
@@ -121,7 +127,7 @@ export class StrategyService {
                     this.trailingBuy(strategy, price);
                 }
                 break;
-            case EStrategyStates.SL:
+            case EStrategyStates.BOUGHT:
                 if(strategy.stopLoss){
                     this.stopLoss(strategy, price);
                 }
@@ -130,25 +136,35 @@ export class StrategyService {
     }
 
     protected trailingBuy(strategy: StrategyDocument, currentPrice: number){
-        const trailingBuyValue = strategy.trailingBuyLastPrice + strategy.trailingBuyLastPrice*strategy.trailingBuyPercent/100;
-        if(currentPrice > trailingBuyValue){
-            this.buy(currentPrice, strategy)
+        if(strategy.trailingBuyLastPrice == 0){
+            strategy.trailingBuyLastPrice = currentPrice;
+            this.updateStrategy(strategy);
         }else{
-            if(strategy.trailingBuyLastPrice > currentPrice){
-                strategy.trailingBuyLastPrice = currentPrice;
-                this.updateStrategy(strategy);
+            const trailingBuyValue = strategy.trailingBuyLastPrice + strategy.trailingBuyLastPrice*strategy.trailingBuyPercent/100;
+            if(currentPrice > trailingBuyValue){
+                this.buy(currentPrice, strategy)
+            }else{
+                if(strategy.trailingBuyLastPrice > currentPrice){
+                    strategy.trailingBuyLastPrice = currentPrice;
+                    this.updateStrategy(strategy);
+                }
             }
         }
     }
 
     protected trailingSell(strategy: StrategyDocument, currentPrice: number){
-        const trailingSellValue = strategy.trailingSellLastPrice - strategy.trailingSellLastPrice*strategy.trailingSellPercent/100;
-        if(currentPrice < trailingSellValue){
-            this.sell(currentPrice, strategy)
+        if(strategy.trailingSellLastPrice == 0){
+            strategy.trailingSellLastPrice = currentPrice;
+            this.updateStrategy(strategy);
         }else{
-            if(strategy.trailingSellLastPrice < currentPrice){
-                strategy.trailingSellLastPrice = currentPrice;
-                this.updateStrategy(strategy);
+            const trailingSellValue = strategy.trailingSellLastPrice - strategy.trailingSellLastPrice*strategy.trailingSellPercent/100;
+            if(currentPrice < trailingSellValue){
+                this.sell(currentPrice, strategy)
+            }else{
+                if(strategy.trailingSellLastPrice < currentPrice){
+                    strategy.trailingSellLastPrice = currentPrice;
+                    this.updateStrategy(strategy);
+                }
             }
         }
     }
@@ -185,12 +201,14 @@ export class StrategyService {
                 strategy: strategy._id,
                 price: currentPrice,
                 from: strategy.currentState,
-                action: TfActionString.BUY
+                action: TfActionString.BUY,
+                value: buyAmount
             });
         strategy.currentState = EStrategyStates.BOUGHT;
         strategy.stopLossLastPrice = currentPrice;
         this.updateStrategy(strategy);
         this.walletService.updateWallet(wallet._id, wallet);
+        this.logger.log('BUY: ', currentPrice)
     }
 
     protected sell(currentPrice: number, strategy: StrategyDocument){
@@ -204,11 +222,24 @@ export class StrategyService {
                 strategy: strategy._id,
                 price: currentPrice,
                 from: strategy.currentState,
-                action: TfActionString.SELL
+                action: TfActionString.SELL,
+                value: sellAmount
             });
         strategy.currentState = EStrategyStates.NONE;
-        this.walletService.updateWallet(wallet._id, wallet);
+        this.updateWallet(wallet._id, wallet);
         this.updateStrategy(strategy);
+        this.logger.log('SELL: ', currentPrice)
+    }
+
+    protected updateWallet(id: mongoose.Schema.Types.ObjectId, update: UpdateWalletDto): void{
+        const index = _.findIndex(this.strategies, (strat: StrategyDocument)=>{
+            return strat.wallet['_id'] === id
+        });
+        if(index>=0){
+            this.strategies[index].wallet.crypto = update.crypto;
+            this.strategies[index].wallet.fiat = update.fiat;
+        }
+        this.walletService.updateWallet(id, update);
     }
 
     protected updateStrategy(strategy: StrategyDocument): void{

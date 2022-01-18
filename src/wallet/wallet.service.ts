@@ -5,6 +5,7 @@ import {Wallet, WalletDocument} from "../schemas/wallet.schema";
 import {CreateWalletDto} from "../dto/create-wallet-dto";
 import * as mongoose from "mongoose";
 import {UpdateWalletDto} from "../dto/update-wallet-dto";
+import removeFields from "../utils/mongoObjectClean";
 
 @Injectable()
 export class WalletService {
@@ -24,6 +25,7 @@ export class WalletService {
     }
 
     async updateWallet(id: mongoose.Schema.Types.ObjectId, update: UpdateWalletDto){
+        removeFields(update, ['_id', 'name']);
         return this.walletModel.findByIdAndUpdate(id, update).exec();
     }
 }
