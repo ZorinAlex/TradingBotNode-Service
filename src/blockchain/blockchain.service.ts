@@ -20,7 +20,7 @@ export class BlockchainService {
         private strategyService: StrategyService
     ){
         this.logger = new Logger(this.name);
-        // this.connect();
+        //this.connect();
     }
 
     protected name: string = 'Blockchain Service';

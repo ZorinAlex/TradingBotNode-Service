@@ -1,19 +1,21 @@
 import {Injectable, Logger} from '@nestjs/common';
 import {InjectModel} from "@nestjs/mongoose";
 import {Strategy, StrategyDocument} from "../schemas/strategy.schema";
+import * as mongoose from 'mongoose';
 import {Model} from 'mongoose';
 import {EStrategyStates} from "../misc/enums/strategy-states";
 import InterfacePredictionResult from "../misc/interfaces/interface-prediction-result";
 import {TfActionString} from "../misc/enums/tf-action-string";
 import {WalletService} from "../wallet/wallet.service";
-import {WalletDocument} from "../schemas/wallet.schema";
+import {Wallet, WalletDocument} from "../schemas/wallet.schema";
 import {CreateStrategyDto} from "../dto/create-strategy-dto";
 import {UpdateStrategyDto} from "../dto/update-strategy-dto";
-import * as mongoose from "mongoose";
 import * as _ from 'lodash';
 import {TradeService} from "../trade/trade.service";
 import removeFields from "../utils/mongoObjectClean";
 import {UpdateWalletDto} from "../dto/update-wallet-dto";
+import {ETestActionResult, ITestResult} from "../misc/enums/test-action-result";
+import {CreateTradeDto} from "../dto/create-trade-dto";
 
 @Injectable()
 export class StrategyService {
@@ -28,6 +30,7 @@ export class StrategyService {
     protected name: string = 'Strategy Service';
     protected logger: Logger;
     protected strategies: Array<StrategyDocument>;
+    protected testResolver: Function = null;
 
     public async add(createStrategyDto: CreateStrategyDto): Promise<StrategyDocument>{
         const strategy = await new this.strategyModel(createStrategyDto).save();
@@ -51,6 +54,30 @@ export class StrategyService {
         })
     }
 
+    public processInputSignalTest(modelName: string, modelVersion: string, price: number, isFromTicker: boolean, predictionData?: InterfacePredictionResult): Promise<ITestResult>{
+        return new Promise<ITestResult>((resolve, reject) => {
+            let index = _.findIndex(this.strategies, (strategy)=>{
+                return strategy.model === modelName && strategy.version === modelVersion
+            });
+            if(index>=0){
+                this.testResolver = resolve;
+                const strategy = this.strategies[index];
+                if(isFromTicker){
+                    this.processTickerInput(strategy, price)
+                }else{
+                    this.processNeuralInput(strategy, predictionData, price);
+                }
+            }else{
+                reject(`Model: ${modelName} with version: ${modelVersion} not exists`)
+            }
+        })
+
+    }
+
+    public getList(): Promise<Strategy[]> {
+        return this.strategyModel.find().exec()
+    }
+
     protected async preloadStrategies(){
         //TODO use Redis for strategies
         this.strategies = await this.strategyModel.find().populate('wallet exchange').exec();
@@ -67,10 +94,15 @@ export class StrategyService {
                                     strategy.currentState = EStrategyStates.TRAILING_BUY;
                                     strategy.trailingBuyLastPrice = 0;
                                     this.updateStrategy(strategy);
+                                    this.resolveTest(ETestActionResult.NONE);
                                 }else{
                                     this.buy(price, strategy);
                                 }
+                            }else{
+                                this.resolveTest(ETestActionResult.NONE);
                             }
+                        }else{
+                            this.resolveTest(ETestActionResult.NONE);
                         }
                     }else{
                         if(predictionData.predictionPercentage>=strategy.buyConfidence){
@@ -78,9 +110,12 @@ export class StrategyService {
                                 strategy.currentState = EStrategyStates.TRAILING_BUY;
                                 strategy.trailingBuyLastPrice = 0;
                                 this.updateStrategy(strategy);
+                                this.resolveTest(ETestActionResult.NONE);
                             }else{
                                 this.buy(price, strategy);
                             }
+                        }else{
+                            this.resolveTest(ETestActionResult.NONE);
                         }
                     }
                     break;
@@ -92,10 +127,15 @@ export class StrategyService {
                                     strategy.currentState = EStrategyStates.TRAILING_SELL;
                                     strategy.trailingSellLastPrice = 0;
                                     this.updateStrategy(strategy);
+                                    this.resolveTest(ETestActionResult.NONE);
                                 }else{
                                     this.sell(price, strategy);
                                 }
+                            }else{
+                                this.resolveTest(ETestActionResult.NONE);
                             }
+                        }else{
+                            this.resolveTest(ETestActionResult.NONE);
                         }
                     }else{
                         if(predictionData.predictionPercentage>=strategy.sellConfidence){
@@ -103,13 +143,17 @@ export class StrategyService {
                                 strategy.currentState = EStrategyStates.TRAILING_SELL;
                                 strategy.trailingSellLastPrice = 0;
                                 this.updateStrategy(strategy);
+                                this.resolveTest(ETestActionResult.NONE);
                             }else{
                                 this.sell(price, strategy);
                             }
+                        }else{
+                            this.resolveTest(ETestActionResult.NONE);
                         }
                     }
                     break;
                 case TfActionString.NONE:
+                    this.resolveTest(ETestActionResult.NONE);
                     break;
             }
         }
@@ -120,17 +164,26 @@ export class StrategyService {
             case EStrategyStates.TRAILING_SELL:
                 if(strategy.trailingSell){
                     this.trailingSell(strategy, price);
+                }else{
+                    this.resolveTest(ETestActionResult.NONE);
                 }
                 break;
             case EStrategyStates.TRAILING_BUY:
                 if(strategy.trailingBuy){
                     this.trailingBuy(strategy, price);
+                }else{
+                    this.resolveTest(ETestActionResult.NONE);
                 }
                 break;
             case EStrategyStates.BOUGHT:
                 if(strategy.stopLoss){
                     this.stopLoss(strategy, price);
+                }else{
+                    this.resolveTest(ETestActionResult.NONE);
                 }
+                break;
+            case EStrategyStates.NONE:
+                this.resolveTest(ETestActionResult.NONE);
                 break;
         }
     }
@@ -139,6 +192,7 @@ export class StrategyService {
         if(strategy.trailingBuyLastPrice == 0){
             strategy.trailingBuyLastPrice = currentPrice;
             this.updateStrategy(strategy);
+            this.resolveTest(ETestActionResult.TB_STEP);
         }else{
             const trailingBuyValue = strategy.trailingBuyLastPrice + strategy.trailingBuyLastPrice*strategy.trailingBuyPercent/100;
             if(currentPrice > trailingBuyValue){
@@ -148,6 +202,7 @@ export class StrategyService {
                     strategy.trailingBuyLastPrice = currentPrice;
                     this.updateStrategy(strategy);
                 }
+                this.resolveTest(ETestActionResult.TB_STEP);
             }
         }
     }
@@ -156,6 +211,7 @@ export class StrategyService {
         if(strategy.trailingSellLastPrice == 0){
             strategy.trailingSellLastPrice = currentPrice;
             this.updateStrategy(strategy);
+            this.resolveTest(ETestActionResult.TS_STEP);
         }else{
             const trailingSellValue = strategy.trailingSellLastPrice - strategy.trailingSellLastPrice*strategy.trailingSellPercent/100;
             if(currentPrice < trailingSellValue){
@@ -165,6 +221,7 @@ export class StrategyService {
                     strategy.trailingSellLastPrice = currentPrice;
                     this.updateStrategy(strategy);
                 }
+                this.resolveTest(ETestActionResult.TS_STEP);
             }
         }
     }
@@ -180,6 +237,7 @@ export class StrategyService {
                     this.updateStrategy(strategy);
                 }
             }
+            this.resolveTest(ETestActionResult.SL_STEP);
         }
     }
 
@@ -196,19 +254,20 @@ export class StrategyService {
         const fee = buyAmount * strategy.exchange.takerFee/100;
         wallet.fiat -= buyAmount - fee;
         wallet.crypto += buyAmount/currentPrice;
-        this.tradeService.addTradeAction(
-            {
-                strategy: strategy._id,
-                price: currentPrice,
-                from: strategy.currentState,
-                action: TfActionString.BUY,
-                value: buyAmount
-            });
+        const trade: CreateTradeDto = {
+            strategy: strategy._id,
+            price: currentPrice,
+            from: strategy.currentState,
+            action: TfActionString.BUY,
+            value: buyAmount
+        };
+        this.tradeService.addTradeAction(trade);
         strategy.currentState = EStrategyStates.BOUGHT;
         strategy.stopLossLastPrice = currentPrice;
         this.updateStrategy(strategy);
         this.walletService.updateWallet(wallet._id, wallet);
         this.logger.log('BUY: ', currentPrice)
+        this.resolveTest(ETestActionResult.BUY, wallet, trade);
     }
 
     protected sell(currentPrice: number, strategy: StrategyDocument){
@@ -217,18 +276,19 @@ export class StrategyService {
         const fee = sellAmount * strategy.exchange.takerFee/100;
         wallet.fiat += sellAmount - fee;
         wallet.crypto = 0;
-        this.tradeService.addTradeAction(
-            {
-                strategy: strategy._id,
-                price: currentPrice,
-                from: strategy.currentState,
-                action: TfActionString.SELL,
-                value: sellAmount
-            });
+        const trade: CreateTradeDto = {
+            strategy: strategy._id,
+            price: currentPrice,
+            from: strategy.currentState,
+            action: TfActionString.SELL,
+            value: sellAmount
+        };
+        this.tradeService.addTradeAction(trade);
         strategy.currentState = EStrategyStates.NONE;
         this.updateWallet(wallet._id, wallet);
         this.updateStrategy(strategy);
-        this.logger.log('SELL: ', currentPrice)
+        this.logger.log('SELL: ', currentPrice);
+        this.resolveTest(ETestActionResult.SELL, wallet, trade);
     }
 
     protected updateWallet(id: mongoose.Schema.Types.ObjectId, update: UpdateWalletDto): void{
@@ -248,6 +308,17 @@ export class StrategyService {
         });
         if(index>=0){
             this.update(strategy.id, strategy);
+        }
+    }
+
+    protected resolveTest(action: ETestActionResult, wallet?: Wallet, trade?: CreateTradeDto){
+        if(!_.isNil(this.testResolver)){
+            this.testResolver({
+                action,
+                wallet,
+                trade
+            });
+            this.testResolver = null;
         }
     }
 
