@@ -5,11 +5,6 @@ import {DataService} from "./data.service";
 export class DataController {
     constructor(private dataService: DataService){}
 
-    @Get('hour/:start/:end')
-    async getHourDataInRange(@Param('start') start: number, @Param('end') end: number){
-        return  await this.dataService.getHoursDataInRange(start, end);
-    }
-
     @Get('/:start/:end/:granularity')
     /**
      * granularity:
@@ -20,5 +15,10 @@ export class DataController {
      */
     async getDataInRange(@Param('start') start: number, @Param('end') end: number, @Param('granularity') granularity: number){
         return  await this.dataService.getDataInRange(start, end, granularity);
+    }
+
+    @Get('datafiles')
+    async getDatafile(){
+        return await this.dataService.getDataFile()
     }
 }

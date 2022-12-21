@@ -5,9 +5,10 @@ import {Strategy, StrategySchema} from "../schemas/strategy.schema";
 import {MongooseModule} from "@nestjs/mongoose";
 import {WalletModule} from "../wallet/wallet.module";
 import {TradeModule} from "../trade/trade.module";
+import {PredictionModule} from "../prediction/prediction.module";
 
 @Module({
-  imports: [MongooseModule.forFeature([{name: Strategy.name, schema: StrategySchema}]), WalletModule, TradeModule],
+  imports: [MongooseModule.forFeature([{name: Strategy.name, schema: StrategySchema}]), WalletModule, TradeModule, PredictionModule],
   providers: [StrategyService],
   controllers: [StrategyController],
   exports: [StrategyService]

@@ -1,4 +1,4 @@
-import {Controller, Post, Param, Body} from '@nestjs/common';
+import {Controller, Post, Body} from '@nestjs/common';
 import {PredictionService} from "./prediction.service";
 import ModelPredictionDto from "../dto/model-prediction-dto";
 
