@@ -1,5 +1,4 @@
 import InterfaceDataPriceData from "../misc/interfaces/interface-data-price-data";
-import IStrategy from "../interfaces/i-strategy";
 
 export default class StrategyTestDto {
     data?: Array<InterfaceDataPriceData>;

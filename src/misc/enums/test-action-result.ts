@@ -12,6 +12,7 @@ export enum ETestActionResult {
 
 export interface ITestResult {
     action: ETestActionResult,
+    currentState: number,
     wallet?: Wallet
     trade?: CreateTradeDto
 }

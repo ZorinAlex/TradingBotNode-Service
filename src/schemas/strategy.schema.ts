@@ -7,6 +7,8 @@ import {Wallet} from "./wallet.schema";
 export type StrategyDocument = Strategy & mongoose.Document;
 @Schema({timestamps: true})
 export class Strategy {
+    @Prop({required: true})
+    name: string;
     @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Exchange'})
     exchange: Exchange;
     @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Wallet'})
